@@ -4,35 +4,35 @@ Presupuesto: 11 min  Métrica DORA: time to restore
 
 ## Parte 1 · Diagnóstico
 ### Defecto 1
-- Job y etapa:
-- Problema que causa en el pipeline:
-- Link al commit:
-- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests):
-- Evidencia (dato observado, con link al run o fragmento de la salida local):
+- Job y etapa: 
+- Problema que causa en el pipeline: 
+- Link al commit: 
+- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests): 
+- Evidencia (dato observado, con link al run o fragmento de la salida local): 
 ### Defecto 2
-- Job y etapa:
-- Problema que causa en el pipeline:
-- Link al commit:
-- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests):
-- Evidencia (dato observado, con link al run o fragmento de la salida local):
+- Job y etapa: 
+- Problema que causa en el pipeline: 
+- Link al commit: 
+- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests): 
+- Evidencia (dato observado, con link al run o fragmento de la salida local): 
 ### Defecto 3
-- Job y etapa:
-- Problema que causa en el pipeline:
-- Link al commit:
-- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests):
-- Evidencia (dato observado, con link al run o fragmento de la salida local):
+- Job y etapa: 
+- Problema que causa en el pipeline: 
+- Link al commit: 
+- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests): 
+- Evidencia (dato observado, con link al run o fragmento de la salida local): 
 ### Defecto 4
-- Job y etapa:
-- Problema que causa en el pipeline:
-- Link al commit:
-- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests):
-- Evidencia (dato observado, con link al run o fragmento de la salida local):
+- Job y etapa: 
+- Problema que causa en el pipeline: 
+- Link al commit: 
+- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests): 
+- Evidencia (dato observado, con link al run o fragmento de la salida local): 
 ### Defecto 5
-- Job y etapa:
-- Problema que causa en el pipeline:
-- Link al commit:
-- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests):
-- Evidencia (dato observado, con link al run o fragmento de la salida local):
+- Job y etapa: 
+- Problema que causa en el pipeline: 
+- Link al commit: 
+- Corrección (una o más: mover de etapa / dejar como informativo / eliminar / ajustar configuración / modificar tests): 
+- Evidencia (dato observado, con link al run o fragmento de la salida local): 
 
 ## Parte 2 · Implementación
 - Link al run en verde en main:
