@@ -1,6 +1,15 @@
-const { test } = require('node:test');
+const { test, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
+const os = require('node:os');
+const path = require('node:path');
 const { handler } = require('../../src/handler');
+
+let contador = 0;
+
+beforeEach(() => {
+  contador += 1;
+  process.env.DB_PATH = path.join(os.tmpdir(), `wallet-${process.pid}-${Date.now()}-${contador}.db`);
+});
 
 async function llamar(metodo, ruta, cuerpo) {
   const r = await handler({
@@ -11,23 +20,16 @@ async function llamar(metodo, ruta, cuerpo) {
   return { status: r.statusCode, cuerpo: JSON.parse(r.body) };
 }
 
-test('ana transfiere 100 a beto', async () => {
+test('ana transfiere 100 a beto y los saldos reflejan el movimiento', async () => {
   const r = await llamar('POST', '/transferir', { origen: 'ana', destino: 'beto', monto: 100 });
   assert.equal(r.status, 200);
   assert.equal(r.cuerpo.saldoOrigen, 900);
-});
-
-test('el saldo de ana refleja el debito', async () => {
-  const r = await llamar('GET', '/saldo/ana');
-  assert.deepEqual(r.cuerpo, { usuario: 'ana', saldo: 900 });
-});
-
-test('el saldo de beto refleja el credito', async () => {
-  const r = await llamar('GET', '/saldo/beto');
-  assert.deepEqual(r.cuerpo, { usuario: 'beto', saldo: 600 });
+  assert.deepEqual((await llamar('GET', '/saldo/ana')).cuerpo, { usuario: 'ana', saldo: 900 });
+  assert.deepEqual((await llamar('GET', '/saldo/beto')).cuerpo, { usuario: 'beto', saldo: 600 });
 });
 
 test('el historial de ana registra la transferencia', async () => {
+  await llamar('POST', '/transferir', { origen: 'ana', destino: 'beto', monto: 100 });
   const r = await llamar('GET', '/historial/ana');
   assert.equal(r.status, 200);
   assert.equal(r.cuerpo.length, 1);
@@ -35,32 +37,24 @@ test('el historial de ana registra la transferencia', async () => {
   assert.equal(r.cuerpo[0].monto, 100);
 });
 
-test('ana no puede transferir 950', async () => {
-  const r = await llamar('POST', '/transferir', { origen: 'ana', destino: 'carla', monto: 950 });
+test('ana no puede transferir mas que su saldo y no cambian los saldos', async () => {
+  const r = await llamar('POST', '/transferir', { origen: 'ana', destino: 'carla', monto: 1050 });
   assert.equal(r.status, 400);
   assert.equal(r.cuerpo.error, 'saldo insuficiente');
+  assert.equal((await llamar('GET', '/saldo/ana')).cuerpo.saldo, 1000);
+  assert.equal((await llamar('GET', '/saldo/carla')).cuerpo.saldo, 750);
 });
 
-test('una transferencia rechazada no cambia saldos', async () => {
-  const ana = await llamar('GET', '/saldo/ana');
-  const carla = await llamar('GET', '/saldo/carla');
-  assert.equal(ana.cuerpo.saldo, 900);
-  assert.equal(carla.cuerpo.saldo, 750);
-});
-
-test('diego transfiere todo su saldo a elena', async () => {
+test('diego transfiere todo su saldo a elena y despues no puede transferir', async () => {
   const r = await llamar('POST', '/transferir', { origen: 'diego', destino: 'elena', monto: 300 });
   assert.equal(r.status, 200);
-  const elena = await llamar('GET', '/saldo/elena');
-  assert.equal(elena.cuerpo.saldo, 1500);
-});
-
-test('diego sin saldo no puede transferir', async () => {
-  const r = await llamar('POST', '/transferir', { origen: 'diego', destino: 'ana', monto: 0.01 });
-  assert.equal(r.status, 400);
+  assert.equal((await llamar('GET', '/saldo/elena')).cuerpo.saldo, 1500);
+  const sinSaldo = await llamar('POST', '/transferir', { origen: 'diego', destino: 'ana', monto: 0.01 });
+  assert.equal(sinSaldo.status, 400);
 });
 
 test('el historial de elena muestra solo la transferencia de diego', async () => {
+  await llamar('POST', '/transferir', { origen: 'diego', destino: 'elena', monto: 300 });
   const r = await llamar('GET', '/historial/elena');
   assert.equal(r.cuerpo.length, 1);
   assert.equal(r.cuerpo[0].origen, 'diego');
