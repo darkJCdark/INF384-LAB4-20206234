@@ -49,46 +49,47 @@ Presupuesto: 11 min  Métrica DORA: time to restore
 - Link al run fallido: https://github.com/darkJCdark/INF384-LAB4-20206234/actions/runs/40970318956 (evento pull_request del PR #1; `unit` en rojo a los 11 s e `integration` en rojo a los 14 s; `build-push`, `deploy`, `smoke`, `e2e` y `load` no se ejecutaron; run total de 28 s).
 
 ## Parte 3 · Decisión bajo restricción
-Link al run medido:
+Link al run medido: https://github.com/darkJCdark/INF384-LAB4-20206234/actions/runs/40966240874
 
 | Job | Duración (min:seg) |
 |---|---|
-| unit | |
-| integration | |
-| sast | |
-| sca | |
-| build-push | |
-| deploy | |
-| smoke | |
-| e2e | |
-| load | |
-| **Total** | |
+| unit | 0:13 |
+| integration | 0:11 |
+| sast | 0:17 |
+| sca | 0:19 |
+| build-push | 0:43 |
+| deploy | 0:16 |
+| smoke | 0:11 |
+| e2e | 0:41 |
+| load | 12:12 |
+| **Total** | 15:03 (suma de jobs; 13 min 58 s de reloj) |
 
 Resultado de load en ese run:
 | Métrica | Valor |
 |---|---|
-| p90 | |
-| p95 | |
-| Máximo | |
-| Tasa de error | |
-| Requests por segundo | |
+| p90 | 49,26 ms |
+| p95 | 51,32 ms |
+| Máximo | 167,27 ms |
+| Tasa de error | 0,00 % (0 de 36 514 requests) |
+| Requests por segundo | 50,64 |
 
-Conclusión sobre el comportamiento bajo carga:
+Conclusión sobre el comportamiento bajo carga: con 30 VUs durante 12 min (36 514 requests, 100 % de checks) la función responde estable: p95 51,32 ms frente al umbral de 500 ms (10 veces de margen) y máximo 167,27 ms, sin degradación visible. Dos límites de la prueba: la tasa de error de 0,00 % no incluye los rechazos 400, que el script declara como esperados, y los 50 rps los fija el `sleep(1)` de cada VU, no la capacidad de la función; por eso el test confirma estabilidad a esa carga pero no mide el límite de capacidad.
 
-SLO propuesto (percentil, valor, ventana) y justificación:
+SLO propuesto (percentil, valor, ventana) y justificación: p95 de `http_req_duration` < 150 ms, medido sobre la ventana completa de la corrida de k6 (30 VUs; 6 min con 4 min de stage constante). Configurado en `SLO_P95: 150` de `ci.yml` (commit c1aca30). El run medido dio p95 = 51,32 ms (p90 = 49,26 ms), pero un segundo run con el mismo test (run #8 de `ci`, disparado por el commit 89c09c4) dio p95 = 81,18 ms y mínimo de 69,73 ms frente a 30,72 ms: la latencia base varió unos 39 ms entre runs sin cambiar la aplicación. Un SLO de 100 ms habría dejado solo 18,8 ms de holgura sobre el peor valor observado y haría fallar `load` por variación normal; 150 ms deja 1,85 veces de holgura sobre el peor valor y sigue siendo 3,3 veces más estricto que el umbral original de 500 ms, que no detectaba degradaciones de hasta 9 veces.
 
-SLA propuesto y diferencia con el SLO:
+SLA propuesto y diferencia con el SLO: disponibilidad mensual de al menos 99,5 % (respuestas sin error 5xx) y p95 de latencia ≤ 500 ms medido mensualmente, con compensación al cliente si no se cumple. El SLO (150 ms) es una meta interna que el equipo se exige y verifica en cada run; el SLA es un compromiso con consecuencias contractuales y por eso se fija más holgado (500 ms): entre ambos queda un margen para que un incidente consuma presupuesto de error interno antes de incumplir lo prometido al cliente.
 
 Cambios para cumplir el presupuesto:
 | Cambio | Job | Minutos recuperados |
 |---|---|---|
+| Stage de carga constante de k6 de 10 min a 4 min en `test/load/transferir.js` (commit 89c09c4); `load` sigue corriendo en cada run en main y evalúa `SLO_P95` | load | 6 min 3 s (de 12:12 a 6:09) |
 
-Total resultante: [ ] min
-Link al run en main con los cambios:
+Total resultante: 9 min 00 s (540 s, suma de jobs: 14 + 11 + 21 + 17 + 33 + 19 + 12 + 44 + 369 s), 2 min por debajo del presupuesto de 11 min; 7 min 55 s de reloj.
+Link al run en main con los cambios: https://github.com/darkJCdark/INF384-LAB4-20206234/actions/runs/41033690090 (run #9, push a main, commit c1aca30, verde).
 
-Riesgo aceptado (defecto de la aplicación concreto y efecto en la métrica DORA asignada):
+Riesgo aceptado (defecto de la aplicación concreto y efecto en la métrica DORA asignada): defecto en `src/db.js`, consulta `leerMovimientos` (líneas 41 a 47): eliminar `LIMIT 50`. `GET /historial/{usuario}` pasaría a devolver todos los movimientos acumulados en lugar de los últimos 50; cada transferencia agrega una fila (el run #8 ejecutó 7 854 transferencias en 6 min), por lo que el tamaño de la respuesta, la memoria y la latencia crecen sin tope hasta acercarse al timeout de 15 s de la función. El pipeline resultante no lo detecta: `unit` usa un store falso, `integration` crea una base propia por prueba con un solo movimiento, `e2e` y `smoke` no consultan `/historial` y `load` solo llama a `/transferir` y `/saldo`, y además ahora acumula 4 min de carga en lugar de 10 (menos movimientos acumulados, de modo que el efecto tardaría más en notarse aunque `load` consultara el historial). Se acepta porque el endpoint no está en el camino crítico de la transferencia y cubrirlo exigiría ampliar `load` o agregar una prueba con más de 50 movimientos, fuera del alcance de este cambio. Efecto en time to restore: sube. El defecto llega a producción y se detecta por sus efectos (latencia, timeouts), no antes del despliegue, así que el tiempo hasta detectarlo se suma al tiempo de restauración. El acortamiento de `load` solo reduce el peor caso de espera de un commit de corrección: como el workflow no cancela runs de push en curso (`cancel-in-progress` solo en pull request), un hotfix puede quedar en cola detrás de un run activo, que antes tardaba hasta 13 min 58 s y ahora hasta 7 min 55 s; la corrección llega a `deploy` unos 66 s después de iniciar su run (unit 14 s + build-push 33 s + deploy 19 s).
 
-Decisión sobre sast (se queda / se mueve a otra etapa o evento / informativo) y razón:
+Decisión sobre sast (se queda / se mueve a otra etapa o evento / informativo) y razón: se queda como job bloqueante en la etapa pre-build. Su costo en el run #9 fue 21 s (0,35 min), el 3,9 % de la suma de 540 s; corre en paralelo con `unit`, `integration` y `sca`, así que solo agrega 4 s al camino antes de `build-push` (21 s frente a los 17 s de `sca`, el siguiente más lento). El presupuesto ya se cumple con 2 min de margen, de modo que quitarlo no hace falta para cumplirlo. Efecto en time to restore: no cambia en la práctica (unos 4 s más hasta `deploy`), mientras que moverlo después del despliegue o dejarlo informativo permitiría que una vulnerabilidad de severidad ERROR llegue a producción y obligaría a restaurar con un nuevo run.
 
 ## Declaración de uso de IA
 Herramientas usadas y para qué:
