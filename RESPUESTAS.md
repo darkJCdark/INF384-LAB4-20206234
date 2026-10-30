@@ -42,11 +42,11 @@ Presupuesto: 11 min  Métrica DORA: time to restore
 - Evidencia (dato observado, con link al run o fragmento de la salida local): run base .../runs/40956851525, job `e2e`: paso `Navegador` = 36 s de 1 min 1 s del job; paso `Playwright`: `10 passed (4.3s)`. Solo la prueba 4 usa navegador; las otras 9 usan `page.request`.
 
 ## Parte 2 · Implementación
-- Link al run en verde en main:
-- Link al pull request:
-- Defecto de la aplicación introducido (archivo y descripción):
-- Job que debería detenerlo:
-- Link al run fallido:
+- Link al run en verde en main: https://github.com/darkJCdark/INF384-LAB4-20206234/actions/runs/40966240874 (ejecución manual sobre main, commit f3036fb; su historial contiene los cinco commits de la Parte 1: 428f91d, 3511b5e, f13fbde, dabcd67 y f3036fb; todos los jobs en verde, 13 min 58 s).
+- Link al pull request: https://github.com/darkJCdark/INF384-LAB4-20206234/pull/1 (defecto/saldo-exacto → main del fork; abierto, sin merge).
+- Defecto de la aplicación introducido (archivo y descripción): `src/wallet.js`, función de transferencia, línea 54 (commit e7c566d, https://github.com/darkJCdark/INF384-LAB4-20206234/commit/e7c566d125f7b2098a774bd0ae4e79d6bd9a2e23). La condición `if (cuentaOrigen.saldo < centimos)` pasó a `<=`. Una transferencia por el saldo exacto del origen (por ejemplo, diego envía sus 300 soles a elena) se rechaza con HTTP 400 "saldo insuficiente", aunque el origen tiene fondos justos.
+- Job que debería detenerlo: `unit`. La prueba "transferir todo el saldo deja el origen en cero" espera saldo 0 en el origen y recibe el error. `integration` también lo detecta (transferencia de todo el saldo de diego a elena). Al fallar ambos, `build-push` no se ejecuta y no hay despliegue.
+- Link al run fallido: https://github.com/darkJCdark/INF384-LAB4-20206234/actions/runs/40970318956 (evento pull_request del PR #1; `unit` en rojo a los 11 s e `integration` en rojo a los 14 s; `build-push`, `deploy`, `smoke`, `e2e` y `load` no se ejecutaron; run total de 28 s).
 
 ## Parte 3 · Decisión bajo restricción
 Link al run medido:
